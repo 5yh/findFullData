@@ -130,11 +130,11 @@ if __name__=='__main__':
     final_edges.write.option('header',True).csv('file:///home/lxl/syh/new615/lr/final_edges')
     label_id.write.option('header',True).csv('file:///home/lxl/syh/new615/lr/label_id')
 
-    # third_id = neighnor_1.join(all_data,on = 'from' , how = 'inner')
-    # third_id = third_id.groupby('from').count().withColumnRenamed('count','number')
-    # third_id_ = third_id.filter(third_id.number == 3)
-    # print('三重邻居的节点个数为：',third_id.count())
-    # print(third_id.head(10))
+    third_id = neighnor_1.join(all_data,on = 'from' , how = 'inner')
+    third_id = third_id.groupby('from').count().withColumnRenamed('count','number')
+    third_id_ = third_id.filter(third_id.number == 3)
+    print('三重邻居的节点个数为：',third_id.count())
+    print(third_id.head(10))
 
     # second_id = third_id.filter(third_id.number == 2)
     # print('二重邻居的节点个数为：',second_id.count())
