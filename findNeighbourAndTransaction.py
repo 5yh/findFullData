@@ -62,22 +62,46 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     s = s.union(t)#和seed_label_data_1有关的id，无论from还是to
     # 原加目标
 
-    # s.show()
-    # s=s.withColumnRenamed("to","id")
-    # tmpData=[("0x416299aade6443e6f6e8ab67126e65a7f606eef5", )]
-    # new_row = sparkSession.createDataFrame(tmpData, ["id"])
-    # s = s.union(new_row)
     s=s.withColumn("originalAddress", F.lit(hashId))
+    s=s.withColumn("order",F.lit(1))
     s=s.distinct()
-    s=s.sample(False, 1.0).limit(100)
-    print('s的个数是：',s.count())
+    #一阶取10个
+    s=s.sample(False, 1.0).limit(10)
+    print('一阶的个数是：',s.count())
+
+
+    # s现在有to、originaladdress、order
+    s=s.withColumnRenamed('to','from')
+
+    source_neighbor2 = all_data.join(s,on = 'from',how = 'inner')
+    # from to originalAddress order
+    #根据from内连接出来的，由all_data而来的中from值为一阶邻居点，to值是二阶邻居点，origianladdress和order是空
+    source_neighbor2 = source_neighbor2.withColumn("originalAddress", col("originalAddress").fillna(col("from")))
+    source_neighbor2 = source_neighbor2.withColumn("from", when(col("order").isNull(), col("to")).otherwise(col("from")))
+    source_neighbor2 = source_neighbor2.withColumn("order", col("order").fillna(2))
+    # 原先的不变，新来的from变二阶，original变原一阶，order变2
+
+
+    s2 = source_neighbor2.select('from','originalAddress','order').distinct()
+
+    # s_ = s.withColumnRenamed('from','to')
+
+
+    # target_neighbor2 = all_data.join(s_,on = 'to',how = 'inner')
+    # t = target_neighbor.select('from').distinct()    
+
+
+
+
+
+
     # 有bug，没删掉，要手动删一下，之后再改
     tmpLoc="file://"+fileSaveLoc+hashId+"/neighbours.csv"
     # if os.path.exists(tmpLoc):
     #     print("已存在")
     #     rmtree(tmpLoc)
-    s.write.option('header',True).csv(tmpLoc)
-    return s
+    s2.write.option('header',True).csv(tmpLoc)
+    return s2
 
 def findTransaction(sparkSession,hashId,liuShui,isNeighbour=False,originalHashId=None):
     tmpHashIdDataFrame = [(hashId,)]
@@ -244,13 +268,13 @@ def rawEachAccount(row):
     label = spark_session.read.option("header",True).csv("file:///home/lxl/syh/labeled_accounts.csv")
     black_list = spark_session.read.option("header",True).csv("file:///home/lxl/syh/black_list.csv")
     print("流水总数量:%d"%liuShui.count())
-    findTransaction(spark_session,rawAccountId,liuShui)
+    # findTransaction(spark_session,rawAccountId,liuShui)
     rawNeighbourAccounts=findNeighbour(spark_session,rawAccountId,liuShui,label,black_list)
     # rawNeighbourAccounts = spark_session.read.csv("file:///home/lxl/syh/new615/0x030a71c9cf65df5a710ebc49772a601ceef95745/neighbours.csv", header=True, inferSchema=True)
     rawNeighbourAccounts.show()
-    isInBlackList(spark_session,rawNeighbourAccounts,black_list,rawAccountId)
-    # # # 应用函数到每一行
-    rawNeighbourAccounts.foreach(lambda row: rawEachNeighbourAccount(row.asDict()))
+    # isInBlackList(spark_session,rawNeighbourAccounts,black_list,rawAccountId)
+    # # # # 应用函数到每一行
+    # rawNeighbourAccounts.foreach(lambda row: rawEachNeighbourAccount(row.asDict()))
     spark_session.stop()
 
 
