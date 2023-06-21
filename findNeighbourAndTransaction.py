@@ -26,7 +26,7 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     black_list = black_list.drop('id')
     black_list = black_list.withColumn("label", F.lit(1)).withColumnRenamed("blacklist", "id")
     print('black_list',black_list.count())
-    black_list.show()
+    # black_list.show()
     label = label.withColumn("label", F.lit(1))
     label = label.drop('id')
     label = label.withColumnRenamed("account", "id").select('id','label').distinct()
@@ -49,6 +49,7 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     seed_label_data_1 = new_label.filter(new_label.id == hashId)
     seed_label_data_1 = seed_label_data_1.drop('label')
     seed_label_data_1 = seed_label_data_1.withColumnRenamed('id','from')
+    # seed_label_data_1=sparkSession.withColumn("from","0x1a07650af49c5722c775da84c5b1df50aade8a0d")
     print('seed_label_data_1是：',seed_label_data_1.head(10))
 
         
@@ -68,21 +69,52 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     #一阶取10个
     s=s.sample(False, 1.0).limit(10)
     print('一阶的个数是：',s.count())
+    s.show()
 
 
     # s现在有to、originaladdress、order
-    s=s.withColumnRenamed('to','from')
+    s=s.withColumnRenamed('to','id')
+    neigh1 = s.select("id")
+    # 将 neigh1 与 DataFrame B 进行内连接，获取一阶邻居和对应二阶邻居
+    neigh2 = neigh1.join(all_data, neigh1["id"] == all_data["from"], "inner").select(neigh1.id.alias("originalAddress"), all_data.to.alias("id"))
+    print("neigh2")
+    neigh2.show()
+    # 从 A 中提取 id 和 origin 两列
+    A_update = s.select("id", "originalAddress")
+    A_update.show()
+    # 将 neigh2 与 A_update 进行连接，将二阶邻居添加到 A_update 中
+    A_update = A_update.join(neigh2, A_update["id"] == neigh2["originalAddress"], "left")
+    A_update.show()
+    # 从 A_update 中选择 id 和 origin2 两列作为最终结果
+    A_updated = A_update.select(A_update.id, neigh2.id.alias("origin2"))
+    A_updated.show()
+    
+    # source_neighbor2 = all_data.join(s,on = 'from',how = 'outer')
+    # # 保留s中所有的行，对于all_data中from列和s匹配的放进，没有的值留空
+    # print("alldata join")
+    # source_neighbor2.show()
+    # # from to originalAddress order
+    # source_neighbor2 = source_neighbor2.withColumn("originalAddress",  col("from"))
+    # print("操作1")
+    # source_neighbor2.show()
+    # source_neighbor2 = source_neighbor2.withColumn("order", when(col("order").isNull(), 1).otherwise(2))
+    # print("操作2")
+    # source_neighbor2.show()
+    # s2 = source_neighbor2.select('to','originalAddress','order').distinct()
 
-    source_neighbor2 = all_data.join(s,on = 'from',how = 'inner')
-    # from to originalAddress order
-    #根据from内连接出来的，由all_data而来的中from值为一阶邻居点，to值是二阶邻居点，origianladdress和order是空
-    source_neighbor2 = source_neighbor2.withColumn("originalAddress", col("originalAddress").fillna(col("from")))
-    source_neighbor2 = source_neighbor2.withColumn("from", when(col("order").isNull(), col("to")).otherwise(col("from")))
-    source_neighbor2 = source_neighbor2.withColumn("order", col("order").fillna(2))
-    # 原先的不变，新来的from变二阶，original变原一阶，order变2
-
-
-    s2 = source_neighbor2.select('from','originalAddress','order').distinct()
+    # s=s.withColumnRenamed('from','to')
+    # s.show()
+    # target_neighbor2 = all_data.join(s,on = 'to',how = 'outer')
+    # print("alldata join2")
+    # target_neighbor2.show()
+    # # from to originalAddress order
+    # target_neighbor2 = target_neighbor2.withColumn("originalAddress",  col("from"))
+    # print("操作1")
+    # target_neighbor2.show()
+    # target_neighbor2 = target_neighbor2.withColumn("order", when(col("order").isNull(), 1).otherwise(2))
+    # print("操作2")
+    # target_neighbor2.show()
+    # t2 = source_neighbor2.select('to','originalAddress','order').distinct()
 
     # s_ = s.withColumnRenamed('from','to')
 
@@ -100,8 +132,8 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     # if os.path.exists(tmpLoc):
     #     print("已存在")
     #     rmtree(tmpLoc)
-    s2.write.option('header',True).csv(tmpLoc)
-    return s2
+    # s2.write.option('header',True).csv(tmpLoc)
+    # return s2
 
 def findTransaction(sparkSession,hashId,liuShui,isNeighbour=False,originalHashId=None):
     tmpHashIdDataFrame = [(hashId,)]
@@ -264,9 +296,15 @@ def rawEachAccount(row):
     .config("spark.driver.memory", "30g") \
     .getOrCreate()
     spark_session.sparkContext.setLogLevel("Error")
-    liuShui=spark_session.read.csv("file:///mnt/blockchain03/t_edge_id/t_edge_id", header=True, inferSchema=True)
+    # liuShui=spark_session.read.csv("file:///mnt/blockchain03/t_edge_id/t_edge_id", header=Tue, inferSchema=True)
+    liuShui=spark_session.read.csv("file:///mnt/blockchain03/findFullData/tmpTestData/testLiushui.csv", header=True, inferSchema=True)
+    
+    print("流水读取完成")
+    # label = spark_session.read.option("header",True).csv("file:///home/lxl/syh/labeled_accounts.csv")
     label = spark_session.read.option("header",True).csv("file:///home/lxl/syh/labeled_accounts.csv")
+    print("label读取完成")
     black_list = spark_session.read.option("header",True).csv("file:///home/lxl/syh/black_list.csv")
+    print("黑名单读取完成")
     print("流水总数量:%d"%liuShui.count())
     # findTransaction(spark_session,rawAccountId,liuShui)
     rawNeighbourAccounts=findNeighbour(spark_session,rawAccountId,liuShui,label,black_list)
