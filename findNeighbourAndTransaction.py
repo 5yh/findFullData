@@ -144,8 +144,8 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     # if os.path.exists(tmpLoc):
     #     print("已存在")
     #     rmtree(tmpLoc)
-    # s2.write.option('header',True).csv(tmpLoc)
-    # return s2
+    s4.write.option('header',True).csv(tmpLoc)
+    return s4
 
 def findTransaction(sparkSession,hashId,liuShui,isNeighbour=False,originalHashId=None):
     tmpHashIdDataFrame = [(hashId,)]
@@ -308,8 +308,8 @@ def rawEachAccount(row):
     .config("spark.driver.memory", "100g") \
     .getOrCreate()
     spark_session.sparkContext.setLogLevel("Error")
-    # liuShui=spark_session.read.csv("file:///mnt/blockchain03/t_edge_id/t_edge_id", header=Tue, inferSchema=True)
-    liuShui=spark_session.read.csv("file:///mnt/blockchain03/findFullData/tmpTestData/testLiushui.csv", header=True, inferSchema=True)
+    liuShui=spark_session.read.csv("file:///mnt/blockchain03/t_edge_id/t_edge_id", header=Tue, inferSchema=True)
+    # liuShui=spark_session.read.csv("file:///mnt/blockchain03/findFullData/tmpTestData/testLiushui.csv", header=True, inferSchema=True)
     
     print("流水读取完成")
     # label = spark_session.read.option("header",True).csv("file:///home/lxl/syh/labeled_accounts.csv")
