@@ -76,51 +76,18 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     s=s.withColumnRenamed('to','id')
     neigh1 = s.select("id")
     # 将 neigh1 与 DataFrame B 进行内连接，获取一阶邻居和对应二阶邻居
-    neigh2 = neigh1.join(all_data, neigh1["id"] == all_data["from"], "inner").select(neigh1.id.alias("originalAddress"), all_data.to.alias("id"))
+    neigh2 = neigh1.join(all_data, neigh1["id"] == all_data["from"], "inner").select(neigh1.id.alias("originalAddress"), all_data.to.alias("id")).distinct()
+    neigh2 = neigh2.withColumn("label", F.lit(2))
     print("neigh2")
     neigh2.show()
-    # 从 A 中提取 id 和 origin 两列
-    A_update = s.select("id", "originalAddress")
-    A_update.show()
-    # 将 neigh2 与 A_update 进行连接，将二阶邻居添加到 A_update 中
-    A_update = A_update.join(neigh2, A_update["id"] == neigh2["originalAddress"], "left")
-    A_update.show()
-    # 从 A_update 中选择 id 和 origin2 两列作为最终结果
-    A_updated = A_update.select(A_update.id, neigh2.id.alias("origin2"))
-    A_updated.show()
-    
-    # source_neighbor2 = all_data.join(s,on = 'from',how = 'outer')
-    # # 保留s中所有的行，对于all_data中from列和s匹配的放进，没有的值留空
-    # print("alldata join")
-    # source_neighbor2.show()
-    # # from to originalAddress order
-    # source_neighbor2 = source_neighbor2.withColumn("originalAddress",  col("from"))
-    # print("操作1")
-    # source_neighbor2.show()
-    # source_neighbor2 = source_neighbor2.withColumn("order", when(col("order").isNull(), 1).otherwise(2))
-    # print("操作2")
-    # source_neighbor2.show()
-    # s2 = source_neighbor2.select('to','originalAddress','order').distinct()
+    neigh3 = neigh1.join(all_data, neigh1["id"] == all_data["to"],"inner").select(neigh1["id"].alias("originalAddress"),all_data["from"].alias("id")).distinct()
+    neigh3 = neigh3.withColumn("label", F.lit(2))
+    #可能要去掉环
+    print("neigh3")
+    neigh3.show()
+    s2=neigh2.union(neigh3)
+    s2.show()
 
-    # s=s.withColumnRenamed('from','to')
-    # s.show()
-    # target_neighbor2 = all_data.join(s,on = 'to',how = 'outer')
-    # print("alldata join2")
-    # target_neighbor2.show()
-    # # from to originalAddress order
-    # target_neighbor2 = target_neighbor2.withColumn("originalAddress",  col("from"))
-    # print("操作1")
-    # target_neighbor2.show()
-    # target_neighbor2 = target_neighbor2.withColumn("order", when(col("order").isNull(), 1).otherwise(2))
-    # print("操作2")
-    # target_neighbor2.show()
-    # t2 = source_neighbor2.select('to','originalAddress','order').distinct()
-
-    # s_ = s.withColumnRenamed('from','to')
-
-
-    # target_neighbor2 = all_data.join(s_,on = 'to',how = 'inner')
-    # t = target_neighbor.select('from').distinct()    
 
 
 
@@ -309,7 +276,7 @@ def rawEachAccount(row):
     # findTransaction(spark_session,rawAccountId,liuShui)
     rawNeighbourAccounts=findNeighbour(spark_session,rawAccountId,liuShui,label,black_list)
     # rawNeighbourAccounts = spark_session.read.csv("file:///home/lxl/syh/new615/0x030a71c9cf65df5a710ebc49772a601ceef95745/neighbours.csv", header=True, inferSchema=True)
-    rawNeighbourAccounts.show()
+    # rawNeighbourAccounts.show()
     # isInBlackList(spark_session,rawNeighbourAccounts,black_list,rawAccountId)
     # # # # 应用函数到每一行
     # rawNeighbourAccounts.foreach(lambda row: rawEachNeighbourAccount(row.asDict()))
