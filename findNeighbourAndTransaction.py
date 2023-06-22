@@ -77,16 +77,42 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     neigh1 = s.select("id")
     # 将 neigh1 与 DataFrame B 进行内连接，获取一阶邻居和对应二阶邻居
     neigh2 = neigh1.join(all_data, neigh1["id"] == all_data["from"], "inner").select(neigh1.id.alias("originalAddress"), all_data.to.alias("id")).distinct()
+    tmps=s.select("id","originalAddress")
+    tmps=tmps.withColumnRenamed("to","tmp").withColumnRenamed("originalAddress","to").withColumnRenamed("originalAddress","to").withColumnRenamed("tmp","originalAddress")
+    neigh2=neigh2.exceptAll(tmps)
     neigh2 = neigh2.withColumn("label", F.lit(2))
     print("neigh2")
     neigh2.show()
     neigh3 = neigh1.join(all_data, neigh1["id"] == all_data["to"],"inner").select(neigh1["id"].alias("originalAddress"),all_data["from"].alias("id")).distinct()
+    neigh3=neigh3.exceptAll(tmps)
     neigh3 = neigh3.withColumn("label", F.lit(2))
     #可能要去掉环
     print("neigh3")
     neigh3.show()
     s2=neigh2.union(neigh3)
+
     s2.show()
+
+    # s现在有to、originaladdress、order
+    neigh4 = s2.select("id")
+    # 将 neigh1 与 DataFrame B 进行内连接，获取一阶邻居和对应二阶邻居
+    neigh5 = neigh4.join(all_data, neigh4["id"] == all_data["from"], "inner").select(neigh4.id.alias("originalAddress"), all_data.to.alias("id")).distinct()
+    tmps2=s2.select("id","originalAddress")
+    tmps2=tmps2.withColumnRenamed("to","tmp").withColumnRenamed("originalAddress","to").withColumnRenamed("originalAddress","to").withColumnRenamed("tmp","originalAddress")
+    neigh5=neigh5.exceptAll(tmps2)
+    neigh5 = neigh5.withColumn("label", F.lit(3))
+    print("neigh5")
+    neigh5.show()
+    neigh6 = neigh4.join(all_data, neigh4["id"] == all_data["to"],"inner").select(neigh4["id"].alias("originalAddress"),all_data["from"].alias("id")).distinct()
+    neigh6=neigh6.exceptAll(tmps2)
+    neigh6 = neigh6.withColumn("label", F.lit(3))
+    #可能要去掉环
+    print("neigh6")
+    neigh6.show()
+    s3=neigh5.union(neigh6)
+    
+    s3.show()
+
 
 
 
