@@ -55,10 +55,11 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
         
     print('开始寻找邻居')
 
+    # source_neighbor = all_data.join(broadcast(seed_label_data_1),on = 'from',how = 'inner')
     source_neighbor = all_data.join(seed_label_data_1,on = 'from',how = 'inner')
     s = source_neighbor.select('to').distinct()
-    seed_label_data_1_ = seed_label_data_1.withColumnRenamed('from','to')
-    target_neighbor = all_data.join(seed_label_data_1_,on = 'to',how = 'inner')
+    # target_neighbor = all_data.join(broadcast(seed_label_data_1.withColumnRenamed('from','to')),on = 'to',how = 'inner')
+    target_neighbor = all_data.join(seed_label_data_1.withColumnRenamed('from','to'),on = 'to',how = 'inner')
     t = target_neighbor.select('from').distinct()
     s = s.union(t)#和seed_label_data_1有关的id，无论from还是to
     # 原加目标
@@ -113,7 +114,25 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     
     s3.show()
 
-
+    # s现在有to、originaladdress、order
+    neigh7 = s3.select("id")
+    # 将 neigh1 与 DataFrame B 进行内连接，获取一阶邻居和对应二阶邻居
+    neigh8 = neigh7.join(all_data, neigh7["id"] == all_data["from"], "inner").select(neigh7.id.alias("originalAddress"), all_data.to.alias("id")).distinct()
+    tmps3=s3.select("id","originalAddress")
+    tmps3=tmps3.withColumnRenamed("to","tmp").withColumnRenamed("originalAddress","to").withColumnRenamed("originalAddress","to").withColumnRenamed("tmp","originalAddress")
+    neigh8=neigh8.exceptAll(tmps3)
+    neigh8 = neigh8.withColumn("label", F.lit(4))
+    print("neigh8")
+    neigh8.show()
+    neigh9 = neigh7.join(all_data, neigh7["id"] == all_data["to"],"inner").select(neigh7["id"].alias("originalAddress"),all_data["from"].alias("id")).distinct()
+    neigh9=neigh9.exceptAll(tmps3)
+    neigh9 = neigh9.withColumn("label", F.lit(4))
+    #可能要去掉环
+    print("neigh9")
+    neigh9.show()
+    s4=neigh8.union(neigh9)
+    
+    s4.show()
 
 
 
@@ -286,7 +305,7 @@ def rawEachAccount(row):
     spark_session = SparkSession \
     .builder \
     .appName("readLiuShui") \
-    .config("spark.driver.memory", "30g") \
+    .config("spark.driver.memory", "100g") \
     .getOrCreate()
     spark_session.sparkContext.setLogLevel("Error")
     # liuShui=spark_session.read.csv("file:///mnt/blockchain03/t_edge_id/t_edge_id", header=Tue, inferSchema=True)
