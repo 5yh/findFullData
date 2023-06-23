@@ -90,9 +90,10 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     #可能要去掉环
     print("neigh3")
     neigh3.show()
-    s2=neigh2.union(neigh3)
-
+    s2=neigh2.union(neigh3).distinct()
+    s2=s2.sample(False, 1.0).limit(15)
     s2.show()
+    
 
     # s现在有to、originaladdress、order
     neigh4 = s2.select("id")
@@ -110,7 +111,8 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     #可能要去掉环
     print("neigh6")
     neigh6.show()
-    s3=neigh5.union(neigh6)
+    s3=neigh5.union(neigh6).distinct()
+    s3=s3.sample(False, 1.0).limit(20)
     
     s3.show()
 
@@ -130,10 +132,11 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     #可能要去掉环
     print("neigh9")
     neigh9.show()
-    s4=neigh8.union(neigh9)
-    
+    s4=neigh8.union(neigh9).distinct()
+    s4=s4.sample(False, 1.0).limit(10)
     s4.show()
 
+    sall=s.union(s2).union(s3).union(s4).distinct()
 
 
 
@@ -144,8 +147,8 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     # if os.path.exists(tmpLoc):
     #     print("已存在")
     #     rmtree(tmpLoc)
-    s4.write.option('header',True).csv(tmpLoc)
-    return s4
+    sall.write.option('header',True).csv(tmpLoc)
+    return sall
 
 def findTransaction(sparkSession,hashId,liuShui,isNeighbour=False,originalHashId=None):
     tmpHashIdDataFrame = [(hashId,)]
@@ -306,9 +309,10 @@ def rawEachAccount(row):
     .builder \
     .appName("readLiuShui") \
     .config("spark.driver.memory", "100g") \
+    .config("spark.sql.broadcastTimeout", "3000") \
     .getOrCreate()
     spark_session.sparkContext.setLogLevel("Error")
-    liuShui=spark_session.read.csv("file:///mnt/blockchain03/t_edge_id/t_edge_id", header=Tue, inferSchema=True)
+    liuShui=spark_session.read.csv("file:///mnt/blockchain03/t_edge_id/t_edge_id", header=True, inferSchema=True)
     # liuShui=spark_session.read.csv("file:///mnt/blockchain03/findFullData/tmpTestData/testLiushui.csv", header=True, inferSchema=True)
     
     print("流水读取完成")
