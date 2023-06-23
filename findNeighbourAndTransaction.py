@@ -11,11 +11,12 @@ fileSaveLoc="/mnt/blockchain03/findFullData/"
 
     
 def isInBlackList(sparkSession,neighbours,blackList,hashId):
-    neighbours=neighbours.withColumnRenamed("to","id")
+    # neighbours=neighbours.withColumnRenamed("to","id")
     blackList=blackList.withColumnRenamed("blacklist","id")
     blackList = blackList.withColumn("label", F.lit(1))
     isInBlackListResult = neighbours.join(blackList, on="id", how="leftouter")
     isInBlackListResult = isInBlackListResult.withColumn("isInBlackListResult", col("label").isNotNull())
+    isInBlackListResult=isInBlackListResultl.drop("label")
     tmpLoc="file://"+fileSaveLoc+hashId+"/neighboursWithBlackList.csv"
     isInBlackListResult.write.option('header',True).csv(tmpLoc)
 def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
@@ -323,10 +324,10 @@ def rawEachAccount(row):
     print("黑名单读取完成")
     print("流水总数量:%d"%liuShui.count())
     # findTransaction(spark_session,rawAccountId,liuShui)
-    rawNeighbourAccounts=findNeighbour(spark_session,rawAccountId,liuShui,label,black_list)
-    # rawNeighbourAccounts = spark_session.read.csv("file:///home/lxl/syh/new615/0x030a71c9cf65df5a710ebc49772a601ceef95745/neighbours.csv", header=True, inferSchema=True)
+    # rawNeighbourAccounts=findNeighbour(spark_session,rawAccountId,liuShui,label,black_list)
+    rawNeighbourAccounts = spark_session.read.csv("file:///mnt/blockchain03/findFullData/0xfec1083c50c374a0f691192b137f0db6077dabbb/neighbours.csv", header=True, inferSchema=True)
     # rawNeighbourAccounts.show()
-    # isInBlackList(spark_session,rawNeighbourAccounts,black_list,rawAccountId)
+    isInBlackList(spark_session,rawNeighbourAccounts,black_list,rawAccountId)
     # # # # 应用函数到每一行
     # rawNeighbourAccounts.foreach(lambda row: rawEachNeighbourAccount(row.asDict()))
     spark_session.stop()
