@@ -9,6 +9,23 @@ import os
 from shutil import rmtree
 fileSaveLoc="/mnt/blockchain03/findFullData/"
 
+def theLastMonth(sparkSession,hashId,liuShui,neighbours):
+    all_data=liuShui
+    all_data = all_data.filter(F.col("timestamp")>=1627747200)
+    all_data = all_data.filter(F.col("timestamp")<1630425600)
+    neighbours = neighbours.filter(neighbours["isInBlackListResult"] == True)
+    neighbours=neighbours.select("id").withColumnRenamed("id","from")
+    fromResult=liuShui.join(neighbours,on="from",how="inner")
+    neighbours=neighbours.withColumnRenamed("from","to")
+    toResult=liuShui.join(neighbours,on="to",how="inner")
+    fromResult=fromResult.union(toResult)
+    sumValue=fromResult.select(sum("value")).first()[0]
+    countTransaction=fromResult.count()
+    with open("theLastMonth.txt", "w") as file:
+        file.write(f"{sumValue}\n")
+        file.write(f"{countTransaction}\n")
+
+
 def newFindTransaction(sparkSession,hashId,liuShui,isNeighbour=False,originalHashId=None):
     tmpHashIdDataFrame = [(hashId,)]
     nodeName = sparkSession.createDataFrame(tmpHashIdDataFrame, ["from"])
@@ -22,10 +39,10 @@ def newFindTransaction(sparkSession,hashId,liuShui,isNeighbour=False,originalHas
     toResult=liuShui.join(nodeName,on="to",how="inner")
     print("to流水数量：%d"%toResult.count())
 
-    allResult=fromResult.join(toResult)
-
-    allResult=allResult.withColumn("timestamp", from_unixtime(col("timestamp")).cast("timestamp"))
-    allResult = allResult.withColumn("date", date_format(col("timestamp"), "yyyy-MM-dd HH:mm:ss"))
+    fromResult=fromResult.union(toResult)
+    fromResult.show()
+    fromResult=fromResult.withColumn("timestamp", from_unixtime(col("timestamp")).cast("timestamp"))
+    fromResult = fromResult.withColumn("date", date_format(col("timestamp"), "yyyy-MM-dd HH:mm:ss"))
     if(isNeighbour==True):
         locWithOriginalHashId=fileSaveLoc+originalHashId+'/'+hashId
         if os.path.exists(locWithOriginalHashId):
@@ -36,8 +53,8 @@ def newFindTransaction(sparkSession,hashId,liuShui,isNeighbour=False,originalHas
         if os.path.exists(locOfAllResult):
             rmtree(locOfAllResult)
         fileLocOfAllResult="file://"+locOfAllResult
-        allResult = allResult.coalesce(1)
-        allResult.write.csv(fileLocOfAllResult,header=True)
+        fromResult = fromResult.coalesce(1)
+        fromResult.write.csv(fileLocOfAllResult,header=True)
         print("allResult保存")
     else:
         loc=fileSaveLoc+hashId
@@ -49,8 +66,8 @@ def newFindTransaction(sparkSession,hashId,liuShui,isNeighbour=False,originalHas
         if os.path.exists(locOfAllResult):
             rmtree(locOfAllResult)
         fileLocOfAllResult="file://"+locOfAllResult
-        allResult = allResult.coalesce(1)
-        allResult.write.csv(fileLocOfAllResult,header=True)
+        fromResult = fromResult.coalesce(1)
+        fromResult.write.csv(fileLocOfAllResult,header=True)
         print("allResult保存")
 
 
@@ -363,7 +380,8 @@ def rawEachAccount(row):
     spark_session = SparkSession \
     .builder \
     .appName("readLiuShui") \
-    .config("spark.driver.memory", "100g") \
+    .config("spark.driver.memory", "200g") \
+    .config("spark.executor.memory", "120g") \
     .config("spark.sql.broadcastTimeout", "3000") \
     .getOrCreate()
     spark_session.sparkContext.setLogLevel("Error")
@@ -378,8 +396,8 @@ def rawEachAccount(row):
     print("黑名单读取完成")
     print("流水总数量:%d"%liuShui.count())
     # findTransaction(spark_session,rawAccountId,liuShui)
-    newFindTransaction(spark_session,rawAccountId,liuShui)
-    # rawNeighbourAccounts=findNeighbour(spark_session,rawAccountId,liuShui,label,black_list)
+    # newFindTransaction(spark_session,rawAccountId,liuShui)
+    rawNeighbourAccounts=findNeighbour(spark_session,rawAccountId,liuShui,label,black_list)
     # rawNeighbourAccounts = spark_session.read.csv("file:///mnt/blockchain03/findFullData/0xfec1083c50c374a0f691192b137f0db6077dabbb/neighbours.csv", header=True, inferSchema=True)
     # rawNeighbourAccounts.show()
     # isInBlackList(spark_session,rawNeighbourAccounts,black_list,rawAccountId)
