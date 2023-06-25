@@ -39,32 +39,34 @@ def newFindTransaction(sparkSession,hashId,liuShui,isNeighbour=False,originalHas
     toResult=liuShui.join(nodeName,on="to",how="inner")
     print("to流水数量：%d"%toResult.count())
 
-    fromResult=fromResult.union(toResult)
-    fromResult.show()
+    # fromResult=fromResult.union(toResult)
+    # fromResult.show()
     fromResult=fromResult.withColumn("timestamp", from_unixtime(col("timestamp")).cast("timestamp"))
+    fromResult.show()
     fromResult = fromResult.withColumn("date", date_format(col("timestamp"), "yyyy-MM-dd HH:mm:ss"))
+    fromResult.show()
     if(isNeighbour==True):
         locWithOriginalHashId=fileSaveLoc+originalHashId+'/'+hashId
-        if os.path.exists(locWithOriginalHashId):
-            rmtree(locWithOriginalHashId)
-        os.makedirs(locWithOriginalHashId)        
+        # if os.path.exists(locWithOriginalHashId):
+        #     rmtree(locWithOriginalHashId)
+        # os.makedirs(locWithOriginalHashId)        
         locOfAllResult=locWithOriginalHashId+"/allResult.csv"
         print("allResult的存放位置",locOfAllResult)
-        if os.path.exists(locOfAllResult):
-            rmtree(locOfAllResult)
+        # if os.path.exists(locOfAllResult):
+        #     rmtree(locOfAllResult)
         fileLocOfAllResult="file://"+locOfAllResult
         fromResult = fromResult.coalesce(1)
         fromResult.write.csv(fileLocOfAllResult,header=True)
         print("allResult保存")
     else:
         loc=fileSaveLoc+hashId
-        if os.path.exists(loc):
-            rmtree(loc)
-        os.makedirs(loc)
+        # if os.path.exists(loc):
+        #     rmtree(loc)
+        # os.makedirs(loc)
         locOfAllResult=loc+"/allResult.csv"
         print("allResult的存放位置",locOfAllResult)
-        if os.path.exists(locOfAllResult):
-            rmtree(locOfAllResult)
+        # if os.path.exists(locOfAllResult):
+        #     rmtree(locOfAllResult)
         fileLocOfAllResult="file://"+locOfAllResult
         fromResult = fromResult.coalesce(1)
         fromResult.write.csv(fileLocOfAllResult,header=True)
@@ -396,8 +398,8 @@ def rawEachAccount(row):
     print("黑名单读取完成")
     print("流水总数量:%d"%liuShui.count())
     # findTransaction(spark_session,rawAccountId,liuShui)
-    # newFindTransaction(spark_session,rawAccountId,liuShui)
-    rawNeighbourAccounts=findNeighbour(spark_session,rawAccountId,liuShui,label,black_list)
+    newFindTransaction(spark_session,rawAccountId,liuShui)
+    # rawNeighbourAccounts=findNeighbour(spark_session,rawAccountId,liuShui,label,black_list)
     # rawNeighbourAccounts = spark_session.read.csv("file:///mnt/blockchain03/findFullData/0xfec1083c50c374a0f691192b137f0db6077dabbb/neighbours.csv", header=True, inferSchema=True)
     # rawNeighbourAccounts.show()
     # isInBlackList(spark_session,rawNeighbourAccounts,black_list,rawAccountId)
