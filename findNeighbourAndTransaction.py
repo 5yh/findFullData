@@ -57,7 +57,7 @@ def newFindTransaction(sparkSession,hashId,liuShui,isNeighbour=False,originalHas
         locWithOriginalHashId=fileSaveLoc+originalHashId+'/'+hashId
         # if os.path.exists(locWithOriginalHashId):
         #     rmtree(locWithOriginalHashId)
-        # os.makedirs(locWithOriginalHashId)        
+        os.makedirs(locWithOriginalHashId)        
         locOfAllResult=locWithOriginalHashId+"/allResult.csv"
         print("allResult的存放位置",locOfAllResult)
         # if os.path.exists(locOfAllResult):
@@ -377,6 +377,7 @@ def rawEachNeighbourAccount(row):
     .config("spark.driver.memory", "30g") \
     .getOrCreate()
     liuShui=spark_session.read.csv("file:///mnt/blockchain03/t_edge_id/t_edge_id", header=True, inferSchema=True)
+    liuShui = liuShui.select("timestamp","from","to","value")
     liuShui = liuShui.filter(F.col("timestamp")>=1598889600)
     liuShui = liuShui.filter(F.col("timestamp")<1630425600)
     print("流水总数量:%d"%liuShui.count())

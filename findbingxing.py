@@ -7,12 +7,34 @@ from pyspark.sql.types import *
 from pyspark.sql.functions import *
 import os
 from shutil import rmtree
+from functools import partial
 fileSaveLoc="/mnt/blockchain03/findFullData/"
-def process_partition(iterator, liuShui):
+
+def process_partition2(iterator,broadcast_df):
+    # 获取广播的 DataFrame
+    spark_session = SparkSession \
+    .builder \
+    .appName("waaaaa") \
+    .config("spark.driver.memory", "30g") \
+    .getOrCreate()
+    print("aaaaaaaaaaaaaaaaa")
+    # broadcast_df = spark_session.sparkContext.broadcast(liuShui)
+    # broadcast_df.show()
+    print(broadcast_df.count())
     # 处理每个分区的数据
     for row in iterator:
-        # newEachNeighbourAccount(row, liuShui)
-        print(liuShui.count())
+        # 使用共享的 DataFrame 进行处理
+        # newEachNeighbourAccount(row, broadcast_df.value)
+        print(broadcast_df.count())
+
+def process_partition(iterator,liuShui):
+    print("nihao3")
+    # 获取 liuShui DataFrame 中的数据
+    # liuShui_data = liuShui.collect()
+
+    # 迭代处理每个分区的数据
+    # for row in iterator:
+    #     print(liuShui_data.count())
 def newEachNeighbourAccount(row,liuShui):
     rawNeighbourId = row["id"]
     print(rawNeighbourId)    
@@ -438,13 +460,26 @@ def rawEachAccount(row):
     # newFindTransaction(spark_session,rawAccountId)
     # rawNeighbourAccounts=findNeighbour(spark_session,rawAccountId,liuShui,label,black_list)
     rawNeighbourAccounts = spark_session.read.csv("file:///mnt/blockchain03/findFullData/0xfec1083c50c374a0f691192b137f0db6077dabbb/neighboursWithBlackList.csv", header=True, inferSchema=True)
-    # rawNeighbourAccounts.show()
+    rawNeighbourAccounts.show()
     # isInBlackList(spark_session,rawNeighbourAccounts,black_list,rawAccountId)
     # # # # 应用函数到每一行
     # rawNeighbourAccounts.foreach(lambda row: rawEachNeighbourAccount(row.asDict()))
-    print("准备并行")
+    print("准备并行qwer")
     # rawNeighbourAccounts.rdd.map(lambda row: newEachNeighbourAccount(row, liuShui)).collect()
-    rawNeighbourAccounts.rdd.mapPartitions(lambda iterator: process_partition(iterator, liuShui))
+    # rawNeighbourAccounts.rdd.mapPartitions(lambda iterator: process_partition(iterator, liuShui)).collect()
+    # result = rawNeighbourAccounts.rdd.mapPartitions(lambda iterator: process_partition(iterator, liuShui)).collect()
+    # 广播变量
+    # broadcast_df = spark_session.sparkContext.broadcast(liuShui)
+
+    # 并行处理
+    # rawNeighbourAccounts.rdd.mapPartitions(lambda iterator: process_partition(iterator, broadcast_df)).collect()
+    liuShuiRdd=spark_session.sparkContext.parallelize(liuShui)
+    print("477")
+    partial_process_partition = partial(process_partition, liuShui=liuShuiRdd)
+    rawNeighbourAccounts.rdd.foreachPartition(partial_process_partition)
+
+    # rawNeighbourAccounts.rdd.mapPartitions(lambda iterator: process_partition(iterator, spark_session,broadcast_df.value)).collect()
+    print("并行结束")
     spark_session.stop()
 
 
