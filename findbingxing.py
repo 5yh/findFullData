@@ -8,7 +8,27 @@ from pyspark.sql.functions import *
 import os
 from shutil import rmtree
 fileSaveLoc="/mnt/blockchain03/findFullData/"
+def process_partition(iterator, liuShui):
+    # 处理每个分区的数据
+    for row in iterator:
+        # newEachNeighbourAccount(row, liuShui)
+        print(liuShui.count())
+def newEachNeighbourAccount(row,liuShui):
+    rawNeighbourId = row["id"]
+    print(rawNeighbourId)    
+    spark_session = SparkSession \
+    .builder \
+    .appName("readLiuShui") \
+    .config("spark.driver.memory", "30g") \
+    .getOrCreate()
+    # liuShui=spark_session.read.csv("file:///mnt/blockchain03/t_edge_id/t_edge_id", header=True, inferSchema=True)
+    # liuShui = liuShui.filter(F.col("timestamp")>=1598889600)
+    # liuShui = liuShui.filter(F.col("timestamp")<1630425600)
+    print("流水总数量:%d"%liuShui.count())
+    # newFindTransaction(spark_session,rawNeighbourId,liuShui,isNeighbour=True,originalHashId=row["originalAddress"])
+    # findTransaction(spark_session,rawNeighbourId,liuShui,isNeighbour=True,originalHashId=row["originalAddress"]) 
 
+    spark_session.stop()
 def theLastMonth(sparkSession,hashId,liuShui,neighbours):
     all_data=liuShui
     all_data = all_data.filter(F.col("timestamp")>=1627747200)
@@ -405,9 +425,9 @@ def rawEachAccount(row):
     # liuShui = liuShui.filter(F.col("timestamp")>=1598889600)
     # liuShui = liuShui.filter(F.col("timestamp")<1630425600)
     # liuShui = liuShui.select("timestamp","from","to","value")
-    # liuShui=spark_session.read.csv("file:///mnt/blockchain03/findFullData/tmpTestData/testLiushui.csv", header=True, inferSchema=True)
+    liuShui=spark_session.read.csv("file:///mnt/blockchain03/findFullData/tmpTestData/testLiushui.csv", header=True, inferSchema=True)
     
-    # print("流水读取完成")
+    print("流水读取完成")
     # label = spark_session.read.option("header",True).csv("file:///home/lxl/syh/labeled_accounts.csv")
     label = spark_session.read.option("header",True).csv("file:///home/lxl/syh/labeled_accounts.csv")
     print("label读取完成")
@@ -421,7 +441,10 @@ def rawEachAccount(row):
     # rawNeighbourAccounts.show()
     # isInBlackList(spark_session,rawNeighbourAccounts,black_list,rawAccountId)
     # # # # 应用函数到每一行
-    rawNeighbourAccounts.foreach(lambda row: rawEachNeighbourAccount(row.asDict()))
+    # rawNeighbourAccounts.foreach(lambda row: rawEachNeighbourAccount(row.asDict()))
+    print("准备并行")
+    # rawNeighbourAccounts.rdd.map(lambda row: newEachNeighbourAccount(row, liuShui)).collect()
+    rawNeighbourAccounts.rdd.mapPartitions(lambda iterator: process_partition(iterator, liuShui))
     spark_session.stop()
 
 
