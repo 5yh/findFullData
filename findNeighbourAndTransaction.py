@@ -27,6 +27,10 @@ def theLastMonth(sparkSession,hashId,liuShui,neighbours):
 
 
 def newFindTransaction(sparkSession,hashId,liuShui,isNeighbour=False,originalHashId=None):
+    # liuShui=sparkSession.read.csv("file:///mnt/blockchain03/t_edge_id/t_edge_id", header=True, inferSchema=True)
+    # liuShui = liuShui.filter(F.col("timestamp")>=1598889600)
+    # liuShui = liuShui.filter(F.col("timestamp")<1630425600)
+    liuShui = liuShui.select("timestamp","from","to","value")
     tmpHashIdDataFrame = [(hashId,)]
     nodeName = sparkSession.createDataFrame(tmpHashIdDataFrame, ["from"])
     nodeName.show()
@@ -38,13 +42,17 @@ def newFindTransaction(sparkSession,hashId,liuShui,isNeighbour=False,originalHas
     nodeName=nodeName.withColumnRenamed("from","to")#列名改成to来进行连接操作
     toResult=liuShui.join(nodeName,on="to",how="inner")
     print("to流水数量：%d"%toResult.count())
-
-    # fromResult=fromResult.union(toResult)
-    # fromResult.show()
+    fromResult=fromResult.select("timestamp","from","to","value")
+    toResult=toResult.select("timestamp","from","to","value")
+    fromResult=fromResult.union(toResult)
+    fromResult.show()
     fromResult=fromResult.withColumn("timestamp", from_unixtime(col("timestamp")).cast("timestamp"))
+    # fromResult = fromResult.withColumn("date", date_format(col("timestamp"), "yyyy-MM-dd"))
+    # fromResult = fromResult.withColumn("time", date_format(col("timestamp"), "HH:mm:ss"))
+    # fromResult = fromResult.withColumn("month", date_format(col("timestamp"), "yyyy-MM"))
     fromResult.show()
-    fromResult = fromResult.withColumn("date", date_format(col("timestamp"), "yyyy-MM-dd HH:mm:ss"))
-    fromResult.show()
+    # fromResult = fromResult.withColumn("date", date_format(col("timestamp"), "yyyy-MM-dd HH:mm:ss"))
+    # fromResult.show()
     if(isNeighbour==True):
         locWithOriginalHashId=fileSaveLoc+originalHashId+'/'+hashId
         # if os.path.exists(locWithOriginalHashId):
@@ -55,7 +63,7 @@ def newFindTransaction(sparkSession,hashId,liuShui,isNeighbour=False,originalHas
         # if os.path.exists(locOfAllResult):
         #     rmtree(locOfAllResult)
         fileLocOfAllResult="file://"+locOfAllResult
-        fromResult = fromResult.coalesce(1)
+        # fromResult = fromResult.coalesce(1)
         fromResult.write.csv(fileLocOfAllResult,header=True)
         print("allResult保存")
     else:
@@ -361,7 +369,7 @@ def findTransaction(sparkSession,hashId,liuShui,isNeighbour=False,originalHashId
         # print("toHourlyResult保存")
     
 def rawEachNeighbourAccount(row):
-    rawNeighbourId = row["to"]
+    rawNeighbourId = row["id"]
     print(rawNeighbourId)    
     spark_session = SparkSession \
     .builder \
@@ -369,8 +377,12 @@ def rawEachNeighbourAccount(row):
     .config("spark.driver.memory", "30g") \
     .getOrCreate()
     liuShui=spark_session.read.csv("file:///mnt/blockchain03/t_edge_id/t_edge_id", header=True, inferSchema=True)
+    liuShui = liuShui.filter(F.col("timestamp")>=1598889600)
+    liuShui = liuShui.filter(F.col("timestamp")<1630425600)
     print("流水总数量:%d"%liuShui.count())
-    findTransaction(spark_session,rawNeighbourId,liuShui,isNeighbour=True,originalHashId=row["originalAddress"]) 
+    newFindTransaction(spark_session,rawNeighbourId,liuShui,isNeighbour=True,originalHashId=row["originalAddress"])
+    # findTransaction(spark_session,rawNeighbourId,liuShui,isNeighbour=True,originalHashId=row["originalAddress"]) 
+
     spark_session.stop()
 
 
@@ -384,27 +396,32 @@ def rawEachAccount(row):
     .appName("readLiuShui") \
     .config("spark.driver.memory", "200g") \
     .config("spark.executor.memory", "120g") \
+    .config("spark.driver.extraJavaOptions", "-Djava.io.tmpdir=/mnt/blockchain03/findFullData/tmpdata") \
+    .config("spark.executor.extraJavaOptions", "-Djava.io.tmpdir=/mnt/blockchain03/findFullData/tmpdata") \
     .config("spark.sql.broadcastTimeout", "3000") \
     .getOrCreate()
     spark_session.sparkContext.setLogLevel("Error")
-    liuShui=spark_session.read.csv("file:///mnt/blockchain03/t_edge_id/t_edge_id", header=True, inferSchema=True)
+    # liuShui=spark_session.read.csv("file:///mnt/blockchain03/t_edge_id/t_edge_id", header=True, inferSchema=True)
+    # liuShui = liuShui.filter(F.col("timestamp")>=1598889600)
+    # liuShui = liuShui.filter(F.col("timestamp")<1630425600)
+    # liuShui = liuShui.select("timestamp","from","to","value")
     # liuShui=spark_session.read.csv("file:///mnt/blockchain03/findFullData/tmpTestData/testLiushui.csv", header=True, inferSchema=True)
     
-    print("流水读取完成")
+    # print("流水读取完成")
     # label = spark_session.read.option("header",True).csv("file:///home/lxl/syh/labeled_accounts.csv")
     label = spark_session.read.option("header",True).csv("file:///home/lxl/syh/labeled_accounts.csv")
     print("label读取完成")
     black_list = spark_session.read.option("header",True).csv("file:///home/lxl/syh/black_list.csv")
     print("黑名单读取完成")
-    print("流水总数量:%d"%liuShui.count())
+    # print("流水总数量:%d"%liuShui.count())
     # findTransaction(spark_session,rawAccountId,liuShui)
-    newFindTransaction(spark_session,rawAccountId,liuShui)
+    # newFindTransaction(spark_session,rawAccountId)
     # rawNeighbourAccounts=findNeighbour(spark_session,rawAccountId,liuShui,label,black_list)
-    # rawNeighbourAccounts = spark_session.read.csv("file:///mnt/blockchain03/findFullData/0xfec1083c50c374a0f691192b137f0db6077dabbb/neighbours.csv", header=True, inferSchema=True)
+    rawNeighbourAccounts = spark_session.read.csv("file:///mnt/blockchain03/findFullData/0xfec1083c50c374a0f691192b137f0db6077dabbb/neighbours.csv", header=True, inferSchema=True)
     # rawNeighbourAccounts.show()
     # isInBlackList(spark_session,rawNeighbourAccounts,black_list,rawAccountId)
     # # # # 应用函数到每一行
-    # rawNeighbourAccounts.foreach(lambda row: rawEachNeighbourAccount(row.asDict()))
+    rawNeighbourAccounts.foreach(lambda row: rawEachNeighbourAccount(row.asDict()))
     spark_session.stop()
 
 
@@ -414,7 +431,9 @@ if __name__=='__main__':
     spark_session = SparkSession \
     .builder \
     .appName("find_neighbor_nodes") \
-    .config("spark.driver.memory", "15g") \
+    .config("spark.driver.extraJavaOptions", "-Djava.io.tmpdir=/mnt/blockchain03/findFullData/tmpdata") \
+    .config("spark.executor.extraJavaOptions", "-Djava.io.tmpdir=/mnt/blockchain03/findFullData/tmpdata") \
+    .config("spark.driver.memory", "100g") \
     .getOrCreate()
     spark_session.sparkContext.setLogLevel("Error")
     # 原始五个账号
