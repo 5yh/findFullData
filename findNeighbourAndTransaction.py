@@ -8,7 +8,7 @@ from pyspark.sql.functions import *
 import os
 from shutil import rmtree
 fileSaveLoc="/mnt/blockchain03/findFullData/"
-
+globalRawId=""
 def calcPercentage(sparkSession,neighbours):
     blackRows = neighbours.filter(col("isInBlackListResult") == True)
     # 计算占比
@@ -596,7 +596,7 @@ def rawEachNeighbourAccount(row):
     liuShui = liuShui.filter(F.col("timestamp")<1630425600)
     print("流水总数量:%d"%liuShui.count())
     # 不是originalAddress, 应该主动写一个值进去
-    newFindTransaction(spark_session,rawNeighbourId,liuShui,isNeighbour=True,originalHashId=row["originalAddress"])
+    newFindTransaction(spark_session,rawNeighbourId,liuShui,isNeighbour=True,originalHashId=globalRawId)
     # findTransaction(spark_session,rawNeighbourId,liuShui,isNeighbour=True,originalHashId=row["originalAddress"]) 
 
     spark_session.stop()
@@ -604,9 +604,10 @@ def rawEachNeighbourAccount(row):
 
 
 def rawEachAccount(row):
+    global globalRawId
     rawAccountId = row["id"]
     print(rawAccountId)
-
+    globalRawId=rawAccountId
     spark_session = SparkSession \
     .builder \
     .appName("readLiuShui") \
