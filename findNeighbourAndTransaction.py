@@ -16,7 +16,7 @@ def calcPercentage(sparkSession,neighbours):
     blackCount = blackRows.count()  # 获取 "label" 列为 True 的行数
     percentage = blackCount / totalCount  # 计算占比
     formatted_percentage = "异常占比：{:.2%}".format(percentage)
-    with open("blackNodesInfo.txt", "a") as file:
+    with open(globalRawId+"/blackNodesInfo.txt", "a") as file:
         file.write(formatted_percentage + "\n")
 
 #
@@ -235,7 +235,7 @@ def theLastMonth(sparkSession,hashId,liuShui,neighbours):
     countTransaction=fromResult.count()
     formattedSumValue = "近一个月异常点总交易金额：{}".format(sumValue)
     formattedCountTransaction = "近一个月异常点总交易笔数：{}".format(countTransaction)
-    with open("blackNodesInfo.txt", "a") as file:
+    with open(globalRawId+"/blackNodesInfo.txt", "a") as file:
         file.write(formattedSumValue + "\n")
         file.write(formattedCountTransaction + "\n")
 
@@ -244,7 +244,7 @@ def newFindTransaction(sparkSession,hashId,liuShui,isNeighbour=False,originalHas
     # liuShui=sparkSession.read.csv("file:///mnt/blockchain03/t_edge_id/t_edge_id", header=True, inferSchema=True)
     # liuShui = liuShui.filter(F.col("timestamp")>=1598889600)
     # liuShui = liuShui.filter(F.col("timestamp")<1630425600)
-    liuShui = liuShui.select("timestamp","from","to","value")
+    # liuShui = liuShui.select("timestamp","from","to","value")
     tmpHashIdDataFrame = [(hashId,)]
     nodeName = sparkSession.createDataFrame(tmpHashIdDataFrame, ["from"])
     nodeName.show()
@@ -306,6 +306,7 @@ def isInBlackList(sparkSession,neighbours,blackList,hashId):
     isInBlackListResult=isInBlackListResult.drop("label")
     tmpLoc="file://"+fileSaveLoc+hashId+"/neighboursWithBlackList.csv"
     isInBlackListResult.write.option('header',True).csv(tmpLoc)
+    return isInBlackListResult
 def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
 
     #读取原始黑名单：
@@ -356,7 +357,7 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     s=s.withColumn("order",F.lit(1))
     s=s.distinct()
     #一阶取10个
-    s=s.sample(False, 1.0).limit(10)
+    s=s.sample(False, 1.0).limit(15)
     print('一阶的个数是：',s.count())
     s.show()
 
@@ -379,7 +380,7 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     print("neigh3")
     neigh3.show()
     s2=neigh2.union(neigh3).distinct()
-    s2=s2.sample(False, 1.0).limit(15)
+    s2=s2.sample(False, 1.0).limit(25)
     s2.show()
     
 
@@ -625,23 +626,22 @@ def rawEachAccount(row):
     # liuShui=spark_session.read.csv("file:///mnt/blockchain03/findFullData/tmpTestData/testLiushui.csv", header=True, inferSchema=True)
     
     print("流水读取完成")
-    # label = spark_session.read.option("header",True).csv("file:///home/lxl/syh/labeled_accounts.csv")
     label = spark_session.read.option("header",True).csv("file:///home/lxl/syh/labeled_accounts.csv")
     print("label读取完成")
     black_list = spark_session.read.option("header",True).csv("file:///home/lxl/syh/black_list.csv")
     print("黑名单读取完成")
-    # print("流水总数量:%d"%liuShui.count())
+    print("流水总数量:%d"%liuShui.count())
     # findTransaction(spark_session,rawAccountId,liuShui)
-    # newFindTransaction(spark_session,rawAccountId)
-    # rawNeighbourAccounts=findNeighbour(spark_session,rawAccountId,liuShui,label,black_list)
-    rawNeighbourAccounts = spark_session.read.csv("file:///mnt/blockchain03/findFullData/0xfec1083c50c374a0f691192b137f0db6077dabbb/neighboursWithBlackList.csv", header=True, inferSchema=True)
+    newFindTransaction(spark_session,rawAccountId,liuShui)
+    rawNeighbourAccounts=findNeighbour(spark_session,rawAccountId,liuShui,label,black_list)
+    # rawNeighbourAccounts = spark_session.read.csv("file:///mnt/blockchain03/findFullData/0xfec1083c50c374a0f691192b137f0db6077dabbb/neighboursWithBlackList.csv", header=True, inferSchema=True)
     rawNeighbourAccounts.show()
-    # findQushi(spark_session,rawNeighbourAccounts,liuShui,rawAccountId)
-    calcPercentage(spark_session,rawNeighbourAccounts)
-    theLastMonth(spark_session,rawAccountId,liuShui,rawNeighbourAccounts)
-    # isInBlackList(spark_session,rawNeighbourAccounts,black_list,rawAccountId)
-    # # # # 应用函数到每一行
-    # rawNeighbourAccounts.foreach(lambda row: rawEachNeighbourAccount(row.asDict()))
+    neighboursWithBlackList=isInBlackList(spark_session,rawNeighbourAccounts,black_list,rawAccountId)
+    rawNeighbourAccounts.foreach(lambda row: rawEachNeighbourAccount(row.asDict()))
+    calcPercentage(spark_session,neighboursWithBlackList)
+    theLastMonth(spark_session,rawAccountId,liuShui,neighboursWithBlackList)
+    findQushi(spark_session,neighboursWithBlackList,liuShui,rawAccountId)
+
     spark_session.stop()
 
 
