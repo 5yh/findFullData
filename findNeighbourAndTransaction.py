@@ -8,6 +8,17 @@ from pyspark.sql.functions import *
 import os
 from shutil import rmtree
 fileSaveLoc="/mnt/blockchain03/findFullData/"
+def calcPercentage(sparkSession,neighbours):
+    blackRows = neighbours.filter(col("label") == True)
+    # 计算占比
+    totalCount = neighbours.count()  # 获取 DataFrame 的总行数
+    blackCount = blackRows.count()  # 获取 "label" 列为 True 的行数
+    percentage = blackCount / totalCount  # 计算占比
+    formatted_percentage = "异常占比：{:.2%}".format(percentage)
+    with open("blackNodesInfo.txt", "a") as file:
+    file.write(formatted_percentage + "\n")
+
+
 def findQushi(sparkSession,neighbours,liuShui,hashId):
     neighboursTrue = neighbours.filter(neighbours["isInBlackListResult"] == True)
     neighboursTrue=neighboursTrue.select("id").withColumnRenamed("id","from")
@@ -16,121 +27,102 @@ def findQushi(sparkSession,neighbours,liuShui,hashId):
 
     print("黑名单节点数量：%d"% neighboursTrue.count())
 
-    fromResult=liuShui.join(neighboursTrue,on="from",how="inner")
-    print("from流水数量：%d" %fromResult.count())
+    # fromResult=liuShui.join(neighboursTrue,on="from",how="inner")
+    # print("from流水数量：%d" %fromResult.count())
 
     neighboursTrue=neighboursTrue.withColumnRenamed("from","to")#列名改成to来进行连接操作
     toResult=liuShui.join(neighboursTrue,on="to",how="inner")
     print("to流水数量：%d"%toResult.count())
 
-    fromResult=fromResult.withColumn("timestamp", from_unixtime(col("timestamp")).cast("timestamp"))
-    fromResult = fromResult.withColumn("date", date_format(col("timestamp"), "yyyy-MM-dd"))
-    fromResult = fromResult.withColumn("hour", date_format(col("timestamp"), "yyyy-MM-dd HH"))
-    fromResult = fromResult.withColumn("month", date_format(col("timestamp"), "yyyy-MM"))
-    print("fromResult结束")
-    fromDailyCounts =fromResult.groupBy("date").count().orderBy("date")
-    fromDailyCounts = fromDailyCounts.withColumn("yesterday_count", lag("count").over(Window.orderBy("date")))
-    fromDailyCounts = fromDailyCounts.withColumn("growth", col("count") - col("yesterday_count"))
+    # fromResult=fromResult.withColumn("timestamp", from_unixtime(col("timestamp")).cast("timestamp"))
+    # fromResult = fromResult.withColumn("date", date_format(col("timestamp"), "yyyy-MM-dd"))
+    # fromResult = fromResult.withColumn("hour", date_format(col("timestamp"), "yyyy-MM-dd HH"))
+    # fromResult = fromResult.withColumn("month", date_format(col("timestamp"), "yyyy-MM"))
+    # print("fromResult结束")
+    # fromDailyCounts =fromResult.groupBy("date").count().orderBy("date")
+    # fromDailyCounts = fromDailyCounts.withColumn("yesterday_count", lag("count").over(Window.orderBy("date")))
+    # fromDailyCounts = fromDailyCounts.withColumn("growth", col("count") - col("yesterday_count"))
 
-    fromDailyTotal = fromResult.groupBy("date").agg(sum("value").alias("total_amount"))
-    fromDailyResult = fromDailyCounts.join(fromDailyTotal, "date")
-    fromDailyResult = fromDailyResult.select("date", "total_amount", "count","yesterday_count","growth")
-    print("fromDailyResult结束")
+    # fromDailyTotal = fromResult.groupBy("date").agg(sum("value").alias("total_amount"))
+    # fromDailyResult = fromDailyCounts.join(fromDailyTotal, "date")
+    # fromDailyResult = fromDailyResult.select("date", "total_amount", "count","yesterday_count","growth")
+    # print("fromDailyResult结束")
 
-    fromHourlyCounts = fromResult.groupBy("hour").count().orderBy("hour")
-    fromHourlyCounts=fromHourlyCounts.withColumn("lasthour_count",lag("count").over(Window.orderBy("hour")))
-    fromHourlyCounts = fromHourlyCounts.withColumn("growth", col("count") - col("lasthour_count"))
+    # fromHourlyCounts = fromResult.groupBy("hour").count().orderBy("hour")
+    # fromHourlyCounts=fromHourlyCounts.withColumn("lasthour_count",lag("count").over(Window.orderBy("hour")))
+    # fromHourlyCounts = fromHourlyCounts.withColumn("growth", col("count") - col("lasthour_count"))
 
-    fromHourlyTotal = fromResult.groupBy("hour").agg(sum("value").alias("total_amount"))
-    fromHourlyResult = fromHourlyCounts.join(fromHourlyTotal, ["hour"])
-    fromHourlyResult = fromHourlyResult.select("hour", "total_amount", "count","lasthour_count","growth")
-    print("fromHourlyResult结束")
+    # fromHourlyTotal = fromResult.groupBy("hour").agg(sum("value").alias("total_amount"))
+    # fromHourlyResult = fromHourlyCounts.join(fromHourlyTotal, ["hour"])
+    # fromHourlyResult = fromHourlyResult.select("hour", "total_amount", "count","lasthour_count","growth")
+    # print("fromHourlyResult结束")
+    
+    # loc=fileSaveLoc+hashId
+    # # if os.path.exists(loc):
+    # #     rmtree(loc)
+    # # os.makedirs(loc)
+    # locOfFromDailyQushi=loc+"/fromDailyQushiTrue.csv"
+    # locOfFromHourlyQushi=loc+"/fromHourlyQushiTrue.csv"
+    # print("fromDailyQushi的存放位置",locOfFromDailyQushi)
+    # # if os.path.exists(locOfFromDailyResult):
+    # #     rmtree(locOfFromDailyResult)
+    # # if os.path.exists(locOfFromHourlyResult):
+    # #     rmtree(locOfFromHourlyResult)
+    # fileLocOfFromDailyResult="file://"+locOfFromDailyQushi
+    # # fromDailyResult = fromDailyResult.coalesce(1)
+    # fromDailyResult.write.csv(fileLocOfFromDailyResult,header=True)
+    # print("fromDailyQushi保存")
+    # fileLocOfFromHourlyResult="file://"+locOfFromHourlyQushi
+    # # fromHourlyResult = fromHourlyResult.coalesce(1)
+    # fromHourlyResult.write.csv(fileLocOfFromHourlyResult,header=True)
+    # print("fromHourlyQushi保存")
+
+    
+    
+    
+    toResult=toResult.withColumn("timestamp", from_unixtime(col("timestamp")).cast("timestamp"))
+    toResult = toResult.withColumn("date", date_format(col("timestamp"), "yyyy-MM-dd"))
+    toResult = toResult.withColumn("hour", date_format(col("timestamp"), "yyyy-MM-dd HH"))
+    toResult = toResult.withColumn("month", date_format(col("timestamp"), "yyyy-MM"))
+    print("toResult结束")
+    toDailyCounts =toResult.groupBy("date").count().orderBy("date")
+    toDailyCounts = toDailyCounts.withColumn("yesterday_count", lag("count").over(Window.orderBy("date")))
+    toDailyCounts = toDailyCounts.withColumn("growth", col("count") - col("yesterday_count"))
+
+    toDailyTotal = toResult.groupBy("date").agg(sum("value").alias("total_amount"))
+    toDailyResult = toDailyCounts.join(toDailyTotal, "date")
+    toDailyResult = toDailyResult.select("date", "total_amount", "count","yesterday_count","growth")
+    print("toDailyResult结束")
+
+    toHourlyCounts = toResult.groupBy("hour").count().orderBy("hour")
+    toHourlyCounts=toHourlyCounts.withColumn("lasthour_count",lag("count").over(Window.orderBy("hour")))
+    toHourlyCounts = toHourlyCounts.withColumn("growth", col("count") - col("lasthour_count"))
+
+    toHourlyTotal = toResult.groupBy("hour").agg(sum("value").alias("total_amount"))
+    toHourlyResult = toHourlyCounts.join(toHourlyTotal, ["hour"])
+    toHourlyResult = toHourlyResult.select("hour", "total_amount", "count","lasthour_count","growth")
+    print("toHourlyResult结束")
     
     loc=fileSaveLoc+hashId
     # if os.path.exists(loc):
     #     rmtree(loc)
     # os.makedirs(loc)
-    locOfFromDailyQushi=loc+"/fromDailyQushiTrue.csv"
-    locOfFromHourlyQushi=loc+"/fromHourlyQushiTrue.csv"
-    print("fromDailyQushi的存放位置",locOfFromDailyQushi)
-    # if os.path.exists(locOfFromDailyResult):
-    #     rmtree(locOfFromDailyResult)
-    # if os.path.exists(locOfFromHourlyResult):
-    #     rmtree(locOfFromHourlyResult)
-    fileLocOfFromDailyResult="file://"+locOfFromDailyQushi
-    # fromDailyResult = fromDailyResult.coalesce(1)
-    fromDailyResult.write.csv(fileLocOfFromDailyResult,header=True)
-    print("fromDailyQushi保存")
-    fileLocOfFromHourlyResult="file://"+locOfFromHourlyQushi
-    # fromHourlyResult = fromHourlyResult.coalesce(1)
-    fromHourlyResult.write.csv(fileLocOfFromHourlyResult,header=True)
-    print("fromHourlyQushi保存")
+    locOfToDailyQushi=loc+"/toDailyQushiTrue.csv"
+    locOfToHourlyQushi=loc+"/toHourlyQushiTrue.csv"
+    print("toDailyQushi的存放位置",locOfToDailyQushi)
+    # if os.path.exists(locOftoDailyResult):
+    #     rmtree(locOftoDailyResult)
+    # if os.path.exists(locOftoHourlyResult):
+    #     rmtree(locOftoHourlyResult)
+    fileLocOfToDailyResult="file://"+locOfToDailyQushi
+    # toDailyResult = toDailyResult.coalesce(1)
+    toDailyResult.write.csv(fileLocOfToDailyResult,header=True)
+    print("toDailyQushi保存")
+    fileLocOfToHourlyResult="file://"+locOfToHourlyQushi
+    # toHourlyResult = toHourlyResult.coalesce(1)
+    toHourlyResult.write.csv(fileLocOfToHourlyResult,header=True)
+    print("toHourlyQushi保存")
 
-
-
-    # toResult = toResult.withColumn("timestamp", from_unixtime(col("timestamp")).cast("timestamp"))
-    # toResult = toResult.withColumn("date", date_format(col("timestamp"), "yyyy-MM-dd"))
-    # toResult = toResult.withColumn("hour", date_format(col("timestamp"), "HH"))
-    # toResult = toResult.withColumn("month", date_format(col("timestamp"), "yyyy-MM"))
-    # print("toResult结束")
-    # toDailyCounts =toResult.groupBy("date").count().orderBy("date")
-    # toDailyCounts = toDailyCounts.withColumn("yesterday_count", lag("count").over(Window.orderBy("date")))
-    # toDailyCounts = toDailyCounts.withColumn("growth", col("count") - col("yesterday_count"))
-
-    # toDailyTotal = toResult.groupBy("date").agg(sum("value").alias("total_amount"))
-    # toDailyResult = toDailyCounts.join(toDailyTotal, "date")
-    # toDailyResult = toDailyResult.select("date", "total_amount", "count","yesterday_count","growth")
-    # print("toDailyResult结束")
-    # # daily_counts.show()
-    # # toHourlyCounts = toResult.groupBy("date","hour").count().orderBy("date","hour")
-    # # toHourlyCounts=toHourlyCounts.withColumn("lasthour_count",lag("count").over(Window.orderBy("hour")))
-    # # toHourlyCounts = toHourlyCounts.withColumn("growth", col("count") - col("lasthour_count"))
-    # # # hourly_counts.show()
-
-    # # toHourlyTotal = toResult.groupBy("date","hour").agg(sum("value").alias("total_amount"))
-    # # toHourlyResult = toHourlyCounts.join(toHourlyTotal, ["date","hour"])
-    # # toHourlyResult = toHourlyResult.select("date","hour", "total_amount", "count","lasthour_count","growth")
-    # # print("toHourlyResult结束")
-    # if(isNeighbour==True):
-    #     locWithOriginalHashId=fileSaveLoc+originalHashId+'/'+hashId
-    #     # if os.path.exists(locWithOriginalHashId):
-    #     #     rmtree(locWithOriginalHashId)
-    #     # os.makedirs(locWithOriginalHashId)        
-    #     locOfToDailyResult=locWithOriginalHashId+"/toDailyResult.csv"
-    #     # locOfToHourlyResult=locWithOriginalHashId+"/toHourlyResult.csv"
-    #     print("ToDailyResult的存放位置",locOfToDailyResult)
-    #     if os.path.exists(locOfToDailyResult):
-    #         rmtree(locOfToDailyResult)
-    #     # if os.path.exists(locOfToHourlyResult):
-    #     #     rmtree(locOfToHourlyResult)
-    #     fileLocOfToDailyResult="file://"+locOfToDailyResult
-    #     toDailyResult = toDailyResult.coalesce(1)
-    #     toDailyResult.write.csv(fileLocOfToDailyResult,header=True)
-    #     print("toDailyResult保存")
-    #     # fileLocOfToHourlyResult="file://"+locOfToHourlyResult
-    #     # toHourlyResult = toHourlyResult.coalesce(1)
-    #     # toHourlyResult.write.csv(fileLocOfToHourlyResult,header=True)
-    #     # print("toHourlyResult保存")
-    # else:
-    #     loc=fileSaveLoc+hashId
-    #     # if os.path.exists(loc):
-    #     #     rmtree(loc)
-    #     # os.makedirs(loc)
-    #     locOfToDailyResult=loc+"/toDailyResult.csv"
-    #     # locOfToHourlyResult=loc+"/toHourlyResult.csv"
-    #     print("ToDailyResult的存放位置",locOfToDailyResult)
-    #     if os.path.exists(locOfToDailyResult):
-    #         rmtree(locOfToDailyResult)
-    #     # if os.path.exists(locOfToHourlyResult):
-    #     #     rmtree(locOfToHourlyResult)
-    #     fileLocOfToDailyResult="file://"+locOfToDailyResult
-    #     toDailyResult = toDailyResult.coalesce(1)
-    #     toDailyResult.write.csv(fileLocOfToDailyResult,header=True)
-    #     print("toDailyResult保存")
-    #     # fileLocOfToHourlyResult="file://"+locOfToHourlyResult
-    #     # toHourlyResult = toHourlyResult.coalesce(1)
-    #     # toHourlyResult.write.csv(fileLocOfToHourlyResult,header=True)
-    #     # print("toHourlyResult保存")
 def theLastMonth(sparkSession,hashId,liuShui,neighbours):
     all_data=liuShui
     all_data = all_data.filter(F.col("timestamp")>=1627747200)
@@ -143,9 +135,11 @@ def theLastMonth(sparkSession,hashId,liuShui,neighbours):
     fromResult=fromResult.union(toResult)
     sumValue=fromResult.select(sum("value")).first()[0]
     countTransaction=fromResult.count()
-    with open("theLastMonth.txt", "w") as file:
-        file.write(f"{sumValue}\n")
-        file.write(f"{countTransaction}\n")
+    formattedSumValue = "近一个月异常点总交易金额：{}".format(sumValue)
+    formattedCountTransaction = "近一个月异常点总交易笔数：{}".format(countTransaction)
+    with open("blackNodesInfo.txt", "a") as file:
+        file.write(formattedSumValue + "\n")
+        file.write(formattedCountTransaction + "\n")
 
 
 def newFindTransaction(sparkSession,hashId,liuShui,isNeighbour=False,originalHashId=None):
