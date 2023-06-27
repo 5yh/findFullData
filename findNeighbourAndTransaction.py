@@ -245,6 +245,11 @@ def newFindTransaction(sparkSession,hashId,liuShui,isNeighbour=False,originalHas
     # liuShui = liuShui.filter(F.col("timestamp")>=1598889600)
     # liuShui = liuShui.filter(F.col("timestamp")<1630425600)
     # liuShui = liuShui.select("timestamp","from","to","value")
+    if(isNeighbour==True):
+        locWithOriginalHashId=fileSaveLoc+originalHashId+'/'+hashId
+        if os.path.exists(locWithOriginalHashId):
+            # rmtree(locWithOriginalHashId)
+            return
     tmpHashIdDataFrame = [(hashId,)]
     nodeName = sparkSession.createDataFrame(tmpHashIdDataFrame, ["from"])
     nodeName.show()
@@ -269,8 +274,9 @@ def newFindTransaction(sparkSession,hashId,liuShui,isNeighbour=False,originalHas
     # fromResult.show()
     if(isNeighbour==True):
         locWithOriginalHashId=fileSaveLoc+originalHashId+'/'+hashId
-        # if os.path.exists(locWithOriginalHashId):
-        #     rmtree(locWithOriginalHashId)
+        if os.path.exists(locWithOriginalHashId):
+            # rmtree(locWithOriginalHashId)
+            return
         os.makedirs(locWithOriginalHashId)        
         locOfAllResult=locWithOriginalHashId+"/allResult.csv"
         print("allResult的存放位置",locOfAllResult)
@@ -634,10 +640,11 @@ def rawEachAccount(row):
     # findTransaction(spark_session,rawAccountId,liuShui)
     newFindTransaction(spark_session,rawAccountId,liuShui)
     rawNeighbourAccounts=findNeighbour(spark_session,rawAccountId,liuShui,label,black_list)
-    # rawNeighbourAccounts = spark_session.read.csv("file:///mnt/blockchain03/findFullData/0xfec1083c50c374a0f691192b137f0db6077dabbb/neighboursWithBlackList.csv", header=True, inferSchema=True)
+    # rawNeighbourAccounts = spark_session.read.csv("file:///mnt/blockchain03/findFullData/0x99d56f945c01c3b51c28cd0f62dcb2958a01a125/neighboursWithBlackList.csv", header=True, inferSchema=True)
     rawNeighbourAccounts.show()
     neighboursWithBlackList=isInBlackList(spark_session,rawNeighbourAccounts,black_list,rawAccountId)
-    rawNeighbourAccounts.foreach(lambda row: rawEachNeighbourAccount(row.asDict()))
+    neighboursWithBlackList=spark_session.read.csv("file:///mnt/blockchain03/findFullData/0x99d56f945c01c3b51c28cd0f62dcb2958a01a125/neighboursWithBlackList.csv", header=True, inferSchema=True)
+    neighboursWithBlackList.foreach(lambda row: rawEachNeighbourAccount(row.asDict()))
     calcPercentage(spark_session,neighboursWithBlackList)
     theLastMonth(spark_session,rawAccountId,liuShui,neighboursWithBlackList)
     findQushi(spark_session,neighboursWithBlackList,liuShui,rawAccountId)
