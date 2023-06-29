@@ -363,7 +363,7 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     # 原加目标
 
     s=s.withColumn("originalAddress", F.lit(hashId))
-    s=s.withColumn("order",F.lit(1))
+    s=s.withColumn("label",F.lit(1))
     s=s.distinct()
     #一阶取10个
     s=s.sample(False, 1.0).limit(15)
@@ -375,7 +375,8 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     s=s.withColumnRenamed('to','id')
     neigh1 = s.select("id")
     # 将 neigh1 与 DataFrame B 进行内连接，获取一阶邻居和对应二阶邻居
-    neigh2 = neigh1.join(all_data, neigh1["id"] == all_data["from"], "inner").select(neigh1.id.alias("originalAddress"), all_data.to.alias("id")).distinct()
+    neigh2 = neigh1.join(all_data, neigh1["id"] == all_data["from"], "inner").select(neigh1["id"].alias("originalAddress"), all_data["to"].alias("id")).distinct()
+    neigh2.show()
     tmps=s.select("id","originalAddress")
     tmps=tmps.withColumnRenamed("id","tmp").withColumnRenamed("originalAddress","id").withColumnRenamed("tmp","originalAddress")
     neigh2=neigh2.exceptAll(tmps)
@@ -392,29 +393,36 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     s2 = s2.dropDuplicates(["id", "label"])
     s2=s2.sample(False, 1.0).limit(25)
     s2.show()
+    # tmpLoc="file://"+fileSaveLoc+hashId+"/s2.csv"
+    # s2.write.option('header',True).csv(tmpLoc)
     
 
     # s现在有to、originaladdress、order
     neigh4 = s2.select("id")
     # 将 neigh1 与 DataFrame B 进行内连接，获取一阶邻居和对应二阶邻居
-    neigh5 = neigh4.join(all_data, neigh4["id"] == all_data["from"], "inner").select(neigh4.id.alias("originalAddress"), all_data.to.alias("id")).distinct()
+    neigh5 = neigh4.join(all_data, neigh4["id"] == all_data["from"], "inner").select(neigh4["id"].alias("originalAddress"), all_data["to"].alias("id")).distinct()
     tmps2=s2.select("id","originalAddress")
     tmps2=tmps2.withColumnRenamed("id","tmp").withColumnRenamed("originalAddress","id").withColumnRenamed("tmp","originalAddress")
     neigh5=neigh5.exceptAll(tmps2)
     neigh5 = neigh5.withColumn("label", F.lit(3))
     print("neigh5")
     neigh5.show()
+
     neigh6 = neigh4.join(all_data, neigh4["id"] == all_data["to"],"inner").select(neigh4["id"].alias("originalAddress"),all_data["from"].alias("id")).distinct()
     neigh6=neigh6.exceptAll(tmps2)
     neigh6 = neigh6.withColumn("label", F.lit(3))
+
     #可能要去掉环
     print("neigh6")
     neigh6.show()
     s3=neigh5.union(neigh6).distinct()
     s3 = s3.dropDuplicates(["id", "label"])
+    s3 = s3.filter(s3["originalAddress"].isin(neigh4))
+
     s3=s3.sample(False, 1.0).limit(20)
     
     s3.show()
+
 
     # s现在有to、originaladdress、order
     neigh7 = s3.select("id")
@@ -434,10 +442,14 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     neigh9.show()
     s4=neigh8.union(neigh9).distinct()
     s4 = s4.dropDuplicates(["id", "label"])
+    s4 = s4.filter(s3["originalAddress"].isin(neigh7))
     s4=s4.sample(False, 1.0).limit(10)
     s4.show()
 
-    sall=s.union(s2).union(s3).union(s4).distinct()
+    s=s.withColumnRenamed("order","label")
+    sall=s.union(s2.select("id","originalAddress","label")).union(s3.select("id","originalAddress","label")).union(s4.select("id","originalAddress","label")).distinct()
+    # sall.show()
+    sall=sall.coalesce(1)
 
 
 
