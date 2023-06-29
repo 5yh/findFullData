@@ -389,7 +389,7 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     print("neigh3")
     neigh3.show()
     s2=neigh2.union(neigh3).distinct()
-    s2 = s2.dropDuplicates(["id", "order"])
+    s2 = s2.dropDuplicates(["id", "label"])
     s2=s2.sample(False, 1.0).limit(25)
     s2.show()
     
@@ -411,7 +411,7 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     print("neigh6")
     neigh6.show()
     s3=neigh5.union(neigh6).distinct()
-    s3 = s3.dropDuplicates(["id", "order"])
+    s3 = s3.dropDuplicates(["id", "label"])
     s3=s3.sample(False, 1.0).limit(20)
     
     s3.show()
@@ -433,7 +433,7 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     print("neigh9")
     neigh9.show()
     s4=neigh8.union(neigh9).distinct()
-    s4 = s4.dropDuplicates(["id", "order"])
+    s4 = s4.dropDuplicates(["id", "label"])
     s4=s4.sample(False, 1.0).limit(10)
     s4.show()
 
