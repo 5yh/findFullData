@@ -371,27 +371,28 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     s.show()
 
 
-    # s现在有to、originaladdress、order
-    s=s.withColumnRenamed('to','id')
-    neigh1 = s.select("id")
-    # 将 neigh1 与 DataFrame B 进行内连接，获取一阶邻居和对应二阶邻居
-    neigh2 = neigh1.join(all_data, neigh1["id"] == all_data["from"], "inner").select(neigh1["id"].alias("originalAddress"), all_data["to"].alias("id")).distinct()
-    neigh2.show()
-    tmps=s.select("id","originalAddress")
-    tmps=tmps.withColumnRenamed("id","tmp").withColumnRenamed("originalAddress","id").withColumnRenamed("tmp","originalAddress")
-    neigh2=neigh2.exceptAll(tmps)
-    neigh2 = neigh2.withColumn("label", F.lit(2))
-    print("neigh2")
-    neigh2.show()
-    neigh3 = neigh1.join(all_data, neigh1["id"] == all_data["to"],"inner").select(neigh1["id"].alias("originalAddress"),all_data["from"].alias("id")).distinct()
-    neigh3=neigh3.exceptAll(tmps)
-    neigh3 = neigh3.withColumn("label", F.lit(2))
-    #可能要去掉环
-    print("neigh3")
-    neigh3.show()
-    s2=neigh2.union(neigh3).distinct()
-    s2 = s2.dropDuplicates(["id", "label"])
-    s2=s2.sample(False, 1.0).limit(25)
+    # # s现在有to、originaladdress、order
+    # s=s.withColumnRenamed('to','id')
+    # neigh1 = s.select("id")
+    # # 将 neigh1 与 DataFrame B 进行内连接，获取一阶邻居和对应二阶邻居
+    # neigh2 = neigh1.join(all_data, neigh1["id"] == all_data["from"], "inner").select(neigh1["id"].alias("originalAddress"), all_data["to"].alias("id")).distinct()
+    # neigh2.show()
+    # tmps=s.select("id","originalAddress")
+    # tmps=tmps.withColumnRenamed("id","tmp").withColumnRenamed("originalAddress","id").withColumnRenamed("tmp","originalAddress")
+    # neigh2=neigh2.exceptAll(tmps)
+    # neigh2 = neigh2.withColumn("label", F.lit(2))
+    # print("neigh2")
+    # neigh2.show()
+    # neigh3 = neigh1.join(all_data, neigh1["id"] == all_data["to"],"inner").select(neigh1["id"].alias("originalAddress"),all_data["from"].alias("id")).distinct()
+    # neigh3=neigh3.exceptAll(tmps)
+    # neigh3 = neigh3.withColumn("label", F.lit(2))
+    # #可能要去掉环
+    # print("neigh3")
+    # neigh3.show()
+    # s2=neigh2.union(neigh3).distinct()
+    # s2 = s2.dropDuplicates(["id", "label"])
+    # s2=s2.sample(False, 1.0).limit(25)
+    s2 = sparkSession.read.option("header",True).csv("file:///mnt/blockchain03/findFullData/0xfec1083c50c374a0f691192b137f0db6077dabbb/s2.csv")
     s2.show()
     # tmpLoc="file://"+fileSaveLoc+hashId+"/s2.csv"
     # s2.write.option('header',True).csv(tmpLoc)
@@ -417,8 +418,10 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     neigh6.show()
     s3=neigh5.union(neigh6).distinct()
     s3 = s3.dropDuplicates(["id", "label"])
-    s3 = s3.filter(s3["originalAddress"].isin(neigh4))
-
+    neigh4_addresses = [row.id for row in neigh4.collect()]
+    print(neigh4_addresses)
+    s3 = s3.filter(s3["originalAddress"].isin(neigh4_addresses))
+    s3.show()
     s3=s3.sample(False, 1.0).limit(20)
     
     s3.show()
@@ -442,7 +445,9 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     neigh9.show()
     s4=neigh8.union(neigh9).distinct()
     s4 = s4.dropDuplicates(["id", "label"])
-    s4 = s4.filter(s3["originalAddress"].isin(neigh7))
+    # s4 = s4.filter(s3["originalAddress"].isin(neigh7))
+    neigh7_addresses = [row.id for row in neigh7.collect()]
+    s4 = s4.filter(s4["originalAddress"].isin(neigh7_addresses))
     s4=s4.sample(False, 1.0).limit(10)
     s4.show()
 
@@ -657,15 +662,15 @@ def rawEachAccount(row):
     print("流水总数量:%d"%liuShui.count())
     # findTransaction(spark_session,rawAccountId,liuShui)
     # newFindTransaction(spark_session,rawAccountId,liuShui)
-    rawNeighbourAccounts=findNeighbour(spark_session,rawAccountId,liuShui,label,black_list)
-    # rawNeighbourAccounts = spark_session.read.csv("file:///mnt/blockchain03/findFullData/0x99d56f945c01c3b51c28cd0f62dcb2958a01a125/neighboursWithBlackList.csv", header=True, inferSchema=True)
+    # rawNeighbourAccounts=findNeighbour(spark_session,rawAccountId,liuShui,label,black_list)
+    # rawNeighbourAccounts = spark_session.read.csv("file:///mnt/blockchain03/findFullData/0xfec1083c50c374a0f691192b137f0db6077dabbb/neighbours.csv", header=True, inferSchema=True)
     # rawNeighbourAccounts.show()
     # neighboursWithBlackList=isInBlackList(spark_session,rawNeighbourAccounts,black_list,rawAccountId)
-    # neighboursWithBlackList=spark_session.read.csv("file:///mnt/blockchain03/findFullData/0xfec1083c50c374a0f691192b137f0db6077dabbb/neighboursWithBlackList.csv", header=True, inferSchema=True)
+    neighboursWithBlackList=spark_session.read.csv("file:///mnt/blockchain03/findFullData/0xfec1083c50c374a0f691192b137f0db6077dabbb/neighboursWithBlackList.csv", header=True, inferSchema=True)
     # neighboursWithBlackList.foreach(lambda row: rawEachNeighbourAccount(row.asDict()))
     # calcPercentage(spark_session,neighboursWithBlackList)
-    # theLastMonth(spark_session,rawAccountId,liuShui,neighboursWithBlackList)
-    # findQushi(spark_session,neighboursWithBlackList,liuShui,rawAccountId)
+    # theLastMonth(spark_session,rawAccountId,liuShui,neighboursWithBlackList) 
+    findQushi(spark_session,neighboursWithBlackList,liuShui,rawAccountId)
 
     spark_session.stop()
 
