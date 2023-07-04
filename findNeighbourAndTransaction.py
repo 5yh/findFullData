@@ -309,10 +309,10 @@ def newFindTransaction(sparkSession,hashId,liuShui,isNeighbour=False,originalHas
 def isInBlackList(sparkSession,neighbours,blackList,hashId):
     # neighbours=neighbours.withColumnRenamed("to","id")
     blackList=blackList.withColumnRenamed("blacklist","id")
-    blackList = blackList.withColumn("label", F.lit(1))
+    blackList = blackList.withColumn("blacklabel", F.lit(1))
     isInBlackListResult = neighbours.join(blackList, on="id", how="leftouter")
-    isInBlackListResult = isInBlackListResult.withColumn("isInBlackListResult", col("label").isNotNull())
-    isInBlackListResult=isInBlackListResult.drop("label")
+    isInBlackListResult = isInBlackListResult.withColumn("isInBlackListResult", col("blacklabel").isNotNull())
+    isInBlackListResult=isInBlackListResult.drop("blacklabel")
     tmpLoc="file://"+fileSaveLoc+hashId+"/neighboursWithBlackList.csv"
     isInBlackListResult.write.option('header',True).csv(tmpLoc)
     return isInBlackListResult
@@ -366,33 +366,33 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     s=s.withColumn("label",F.lit(1))
     s=s.distinct()
     #一阶取10个
-    s=s.sample(False, 1.0).limit(15)
+    s=s.sample(False, 1.0).limit(30)
     print('一阶的个数是：',s.count())
     s.show()
 
 
-    # # s现在有to、originaladdress、order
-    # s=s.withColumnRenamed('to','id')
-    # neigh1 = s.select("id")
-    # # 将 neigh1 与 DataFrame B 进行内连接，获取一阶邻居和对应二阶邻居
-    # neigh2 = neigh1.join(all_data, neigh1["id"] == all_data["from"], "inner").select(neigh1["id"].alias("originalAddress"), all_data["to"].alias("id")).distinct()
-    # neigh2.show()
-    # tmps=s.select("id","originalAddress")
-    # tmps=tmps.withColumnRenamed("id","tmp").withColumnRenamed("originalAddress","id").withColumnRenamed("tmp","originalAddress")
-    # neigh2=neigh2.exceptAll(tmps)
-    # neigh2 = neigh2.withColumn("label", F.lit(2))
-    # print("neigh2")
-    # neigh2.show()
-    # neigh3 = neigh1.join(all_data, neigh1["id"] == all_data["to"],"inner").select(neigh1["id"].alias("originalAddress"),all_data["from"].alias("id")).distinct()
-    # neigh3=neigh3.exceptAll(tmps)
-    # neigh3 = neigh3.withColumn("label", F.lit(2))
-    # #可能要去掉环
-    # print("neigh3")
-    # neigh3.show()
-    # s2=neigh2.union(neigh3).distinct()
-    # s2 = s2.dropDuplicates(["id", "label"])
-    # s2=s2.sample(False, 1.0).limit(25)
-    s2 = sparkSession.read.option("header",True).csv("file:///mnt/blockchain03/findFullData/0xfec1083c50c374a0f691192b137f0db6077dabbb/s2.csv")
+    # s现在有to、originaladdress、order
+    s=s.withColumnRenamed('to','id')
+    neigh1 = s.select("id")
+    # 将 neigh1 与 DataFrame B 进行内连接，获取一阶邻居和对应二阶邻居
+    neigh2 = neigh1.join(all_data, neigh1["id"] == all_data["from"], "inner").select(neigh1["id"].alias("originalAddress"), all_data["to"].alias("id")).distinct()
+    neigh2.show()
+    tmps=s.select("id","originalAddress")
+    tmps=tmps.withColumnRenamed("id","tmp").withColumnRenamed("originalAddress","id").withColumnRenamed("tmp","originalAddress")
+    neigh2=neigh2.exceptAll(tmps)
+    neigh2 = neigh2.withColumn("label", F.lit(2))
+    print("neigh2")
+    neigh2.show()
+    neigh3 = neigh1.join(all_data, neigh1["id"] == all_data["to"],"inner").select(neigh1["id"].alias("originalAddress"),all_data["from"].alias("id")).distinct()
+    neigh3=neigh3.exceptAll(tmps)
+    neigh3 = neigh3.withColumn("label", F.lit(2))
+    #可能要去掉环
+    print("neigh3")
+    neigh3.show()
+    s2=neigh2.union(neigh3).distinct()
+    s2 = s2.dropDuplicates(["id", "label"])
+    s2=s2.sample(False, 1.0).limit(25)
+    # s2 = sparkSession.read.option("header",True).csv("file:///mnt/blockchain03/findFullData/0xfec1083c50c374a0f691192b137f0db6077dabbb/s2.csv")
     s2.show()
     # tmpLoc="file://"+fileSaveLoc+hashId+"/s2.csv"
     # s2.write.option('header',True).csv(tmpLoc)
@@ -620,10 +620,10 @@ def rawEachNeighbourAccount(row):
     .appName("readLiuShui") \
     .config("spark.driver.memory", "30g") \
     .getOrCreate()
-    liuShui=spark_session.read.csv("file:///mnt/blockchain03/t_edge_id/t_edge_id", header=True, inferSchema=True)
-    liuShui = liuShui.select("timestamp","from","to","value")
-    liuShui = liuShui.filter(F.col("timestamp")>=1598889600)
-    liuShui = liuShui.filter(F.col("timestamp")<1630425600)
+    liuShui=spark_session.read.csv("file:///mnt/blockchain03/t_edge_id/t_edge_id_without0_2020_2021", header=True, inferSchema=True)
+    # liuShui = liuShui.select("timestamp","from","to","value")
+    # liuShui = liuShui.filter(F.col("timestamp")>=1598889600)
+    # liuShui = liuShui.filter(F.col("timestamp")<1630425600)
     print("流水总数量:%d"%liuShui.count())
     # 不是originalAddress, 应该主动写一个值进去
     newFindTransaction(spark_session,rawNeighbourId,liuShui,isNeighbour=True,originalHashId=globalRawId)
@@ -648,10 +648,10 @@ def rawEachAccount(row):
     .config("spark.sql.broadcastTimeout", "3000") \
     .getOrCreate()
     spark_session.sparkContext.setLogLevel("Error")
-    liuShui=spark_session.read.csv("file:///mnt/blockchain03/t_edge_id/t_edge_id", header=True, inferSchema=True)
-    liuShui = liuShui.filter(F.col("timestamp")>=1598889600)
-    liuShui = liuShui.filter(F.col("timestamp")<1630425600)
-    liuShui = liuShui.select("timestamp","from","to","value")
+    liuShui=spark_session.read.csv("file:///mnt/blockchain03/t_edge_id/t_edge_id_without0_2020_2021", header=True, inferSchema=True)
+    # liuShui = liuShui.filter(F.col("timestamp")>=1598889600)
+    # liuShui = liuShui.filter(F.col("timestamp")<1630425600)
+    # liuShui = liuShui.select("timestamp","from","to","value")
     # liuShui=spark_session.read.csv("file:///mnt/blockchain03/findFullData/tmpTestData/testLiushui.csv", header=True, inferSchema=True)
     
     print("流水读取完成")
@@ -663,13 +663,13 @@ def rawEachAccount(row):
     # findTransaction(spark_session,rawAccountId,liuShui)
     # newFindTransaction(spark_session,rawAccountId,liuShui)
     # rawNeighbourAccounts=findNeighbour(spark_session,rawAccountId,liuShui,label,black_list)
-    # rawNeighbourAccounts = spark_session.read.csv("file:///mnt/blockchain03/findFullData/0xfec1083c50c374a0f691192b137f0db6077dabbb/neighbours.csv", header=True, inferSchema=True)
+    # rawNeighbourAccounts = spark_session.read.csv("file:///mnt/blockchain03/findFullData/0xf062b3ab33a518ef57e0039379a128caf2e01ad8/neighbours.csv", header=True, inferSchema=True)
     # rawNeighbourAccounts.show()
     # neighboursWithBlackList=isInBlackList(spark_session,rawNeighbourAccounts,black_list,rawAccountId)
-    neighboursWithBlackList=spark_session.read.csv("file:///mnt/blockchain03/findFullData/0xfec1083c50c374a0f691192b137f0db6077dabbb/neighboursWithBlackList.csv", header=True, inferSchema=True)
-    # neighboursWithBlackList.foreach(lambda row: rawEachNeighbourAccount(row.asDict()))
+    neighboursWithBlackList=spark_session.read.csv("file:///mnt/blockchain03/findFullData/0xf062b3ab33a518ef57e0039379a128caf2e01ad8/neighboursWithBlackList.csv", header=True, inferSchema=True)
+    neighboursWithBlackList.foreach(lambda row: rawEachNeighbourAccount(row.asDict()))
     # calcPercentage(spark_session,neighboursWithBlackList)
-    # theLastMonth(spark_session,rawAccountId,liuShui,neighboursWithBlackList) 
+    theLastMonth(spark_session,rawAccountId,liuShui,neighboursWithBlackList) 
     findQushi(spark_session,neighboursWithBlackList,liuShui,rawAccountId)
 
     spark_session.stop()
