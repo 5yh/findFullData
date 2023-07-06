@@ -9,6 +9,16 @@ import os
 from shutil import rmtree
 fileSaveLoc="/mnt/blockchain03/findFullData/"
 globalRawId=""
+def delete0(sparkSession,allResultLocation,hashId):
+    allResult=sparkSession.read.csv("file://"+allResultLocation, header=True, inferSchema=True)
+    # allResult = allResult.filter(F.col("timestamp")>=1598889600)
+    # allResult = allResult.filter(F.col("timestamp")<1630425600)
+    allResult = allResult.select("timestamp","from","to","value")
+    allResult = allResult.filter(col("value") != "0.0")
+    newAllResultLocation="/mnt/blockchain03/findFullData/"+globalRawId+"/"+hashId+"/"+"newAllResult.csv"
+    if os.path.exists(newAllResultLocation):
+        rmtree(newAllResultLocation)
+    allResult.write.csv("file://"+newAllResultLocation,header=True)
 def calcPercentage(sparkSession,neighbours):
     blackRows = neighbours.filter(col("isInBlackListResult") == True)
     # 计算占比
@@ -626,10 +636,15 @@ def rawEachNeighbourAccount(row):
     # liuShui = liuShui.filter(F.col("timestamp")<1630425600)
     print("流水总数量:%d"%liuShui.count())
     # 不是originalAddress, 应该主动写一个值进去
+    # allResultLocation="/mnt/blockchain03/findFullData/"+globalRawId+"/"+rawNeighbourId+"/"+"allResult.csv"
+    # delete0(spark_session,allResultLocation,rawNeighbourId)
+    # /mnt/blockchain03/findFullData/0xf062b3ab33a518ef57e0039379a128caf2e01ad8/0x000000000000000000000000000000000000dead/allResult.csv
     newFindTransaction(spark_session,rawNeighbourId,liuShui,isNeighbour=True,originalHashId=globalRawId)
     # findTransaction(spark_session,rawNeighbourId,liuShui,isNeighbour=True,originalHashId=row["originalAddress"]) 
 
     spark_session.stop()
+
+
 
 
 
@@ -661,18 +676,19 @@ def rawEachAccount(row):
     print("黑名单读取完成")
     print("流水总数量:%d"%liuShui.count())
     # findTransaction(spark_session,rawAccountId,liuShui)
-    # newFindTransaction(spark_session,rawAccountId,liuShui)
-    # rawNeighbourAccounts=findNeighbour(spark_session,rawAccountId,liuShui,label,black_list)
-    # rawNeighbourAccounts = spark_session.read.csv("file:///mnt/blockchain03/findFullData/0xf062b3ab33a518ef57e0039379a128caf2e01ad8/neighbours.csv", header=True, inferSchema=True)
+    newFindTransaction(spark_session,rawAccountId,liuShui)
+    rawNeighbourAccounts=findNeighbour(spark_session,rawAccountId,liuShui,label,black_list)
+    # rawNeighbourAccounts = spark_session.read.csv("file:///mnt/blockchain03/findFullData/0xfec1083c50c374a0f691192b137f0db6077dabbb/s2.csv", header=True, inferSchema=True)
     # rawNeighbourAccounts.show()
-    # neighboursWithBlackList=isInBlackList(spark_session,rawNeighbourAccounts,black_list,rawAccountId)
-    neighboursWithBlackList=spark_session.read.csv("file:///mnt/blockchain03/findFullData/0xf062b3ab33a518ef57e0039379a128caf2e01ad8/neighboursWithBlackList.csv", header=True, inferSchema=True)
+    neighboursWithBlackList=isInBlackList(spark_session,rawNeighbourAccounts,black_list,rawAccountId)
+    # neighboursWithBlackList=spark_session.read.csv("file:///mnt/blockchain03/findFullData/0xf062b3ab33a518ef57e0039379a128caf2e01ad8/s2neighboursWithBlackList.csv", header=True, inferSchema=True)
     neighboursWithBlackList.foreach(lambda row: rawEachNeighbourAccount(row.asDict()))
     # calcPercentage(spark_session,neighboursWithBlackList)
     theLastMonth(spark_session,rawAccountId,liuShui,neighboursWithBlackList) 
     findQushi(spark_session,neighboursWithBlackList,liuShui,rawAccountId)
-
     spark_session.stop()
+
+
 
 
 
@@ -691,5 +707,6 @@ if __name__=='__main__':
     rawFiveAccounts = spark_session.read.csv(tmpLoc, header=True, inferSchema=True)
 
     # 应用函数到每一行
+    print("niha0o")
     rawFiveAccounts.foreach(rawEachAccount)
     spark_session.stop()
