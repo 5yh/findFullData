@@ -92,8 +92,8 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     # s=s.sample(False, 1.0).limit(15)
     print('一阶的个数是：',s.count())
     # s.show()
-    tmpLoc="file://"+fileSaveLoc+hashId+"/s.csv"
-    s.write.option('header',True).csv(tmpLoc)
+    # tmpLoc="file://"+fileSaveLoc+hashId+"/s.csv"
+    # s.write.option('header',True).csv(tmpLoc)
 
     # s现在有to、originaladdress、order
     s=s.withColumnRenamed('to','id')
@@ -119,8 +119,8 @@ def findNeighbour(sparkSession,hashId,liuShui,label,black_list):
     print('2阶的个数是：',s2.count())
     # s2 = sparkSession.read.option("header",True).csv("file:///mnt/blockchain03/findFullData/0xfec1083c50c374a0f691192b137f0db6077dabbb/s2.csv")
     # s2.show()
-    tmpLoc="file://"+fileSaveLoc+hashId+"/s2.csv"
-    s2.write.option('header',True).csv(tmpLoc)
+    # tmpLoc="file://"+fileSaveLoc+hashId+"/alls2.csv"
+    # s2.write.option('header',True).csv(tmpLoc)
     
 
     
